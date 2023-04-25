@@ -2,24 +2,39 @@ package main
 
 import (
 	"log"
+	"time"
 
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cache"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 	handlers "github.com/thekaduu/api-pokemon-go/packages/handlers"
-
-	"github.com/gin-gonic/gin"
 )
 
-func main() {
+func loadEnvVariables() {
 	err := godotenv.Load(".env")
 	if err != nil {
 		log.Fatal("Erro ao carregar arquivo .env")
 	}
+}
 
-	r := gin.Default()
-	r.NoRoute(handlers.NotFound)
+func main() {
+	loadEnvVariables()
 
-	r.GET("/pokemons", handlers.ListPokemons)
-	r.GET("pokemons/:id", handlers.ShowPokemon)
+	app := fiber.New(fiber.Config{
+		Prefork: true,
+	})
+	app.Use(logger.New(logger.Config{
+		Format: "${pid} [${ip}]:${port} ${locals:requestid} ${status} - ${method} ${path}\n",
+	}))
 
-	r.Run()
+	app.Use(cache.New(cache.Config{
+		Expiration:   10 * time.Minute,
+		CacheControl: true,
+	}))
+
+	app.Get("/pokemons", handlers.ListPokemons)
+	app.Get("pokemons/:id", handlers.ShowPokemon)
+
+	app.Listen(":8080")
 }

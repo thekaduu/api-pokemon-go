@@ -4,74 +4,72 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 	pokemons "github.com/thekaduu/api-pokemon-go/packages/models"
 	pokemonrepository "github.com/thekaduu/api-pokemon-go/packages/repositories"
 )
 
-func pagedPokemons(page int, c gin.Context) {
+func pagedPokemons(page int, c fiber.Ctx) error {
 	pokemonList, err := pokemons.GetPagedPokemons(page)
 
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"result": []pokemons.Pokemon{},
 			"total":  0,
 			"pages":  0,
 		})
-	} else {
-		c.JSON(http.StatusOK, gin.H{
-			"result": pokemonList,
-			"total":  len(pokemonList),
-			"pages":  len(pokemonList) / 10,
-		})
 	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"result": pokemonList,
+		"total":  len(pokemonList),
+		"pages":  len(pokemonList) / 10,
+	})
 }
 
-func NotFound(c *gin.Context) {
-	c.JSON(http.StatusNotFound, gin.H{
+func NotFound(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "Recurso não encontrado.",
 		"status":  http.StatusNotFound,
 	})
 }
 
-func ListPokemons(c *gin.Context) {
-	page, err := strconv.Atoi(c.Query("page"))
+func ListPokemons(c *fiber.Ctx) error {
+	page, err := strconv.Atoi(c.Query("page", ""))
 	var pokemonList []pokemons.Pokemon
 
 	if err == nil {
-		pagedPokemons(page, *c)
-	} else {
-		pokemonList, err = pokemonrepository.All()
+		return pagedPokemons(page, *c)
+	}
 
-		if pokemonList == nil {
-			println(err.Error())
-			c.AbortWithStatus(http.StatusInternalServerError)
-		}
+	pokemonList, err = pokemonrepository.All()
 
-		c.JSON(http.StatusOK, gin.H{
-			"result": pokemonList,
-			"total":  len(pokemonList),
-			"pages":  len(pokemonList) / 10,
+	if pokemonList == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"rersult": nil,
+			"status":  fiber.StatusInternalServerError,
 		})
 	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"result": pokemonList,
+		"total":  len(pokemonList),
+		"pages":  len(pokemonList) / 10,
+	})
 }
 
-func ShowPokemon(c *gin.Context) {
-	idParam := c.Param("id")
+func ShowPokemon(c *fiber.Ctx) error {
+	idParam := c.Params("id")
 	id, _ := strconv.Atoi(idParam)
 
 	pokemon, err := pokemonrepository.Find(id)
 
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"result": nil,
-			"status": http.StatusNotFound,
+			"status": fiber.StatusNotFound,
 		})
-
-		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"result": pokemon,
-	})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"result": pokemon})
 }
