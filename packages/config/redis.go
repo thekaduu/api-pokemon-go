@@ -26,8 +26,6 @@ func Get(key string) (string, error) {
 		return "", err
 	}
 
-	println("Carregado do Redis!")
-
 	return value, nil
 }
 
